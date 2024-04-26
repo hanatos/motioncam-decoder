@@ -659,25 +659,23 @@ namespace motioncam {
     } // unnamed namespace
     
     size_t getEncoded(
-        uint8_t *input, size_t len,
-        uint16_t *out_bits,
-        int out_bits_len,
-        uint16_t *out_refs,
-        int out_refs_len,
-        uint8_t **out_data)
+        uint8_t *input,     size_t len,
+        uint16_t *out_bits, int out_bits_len,
+        uint16_t *out_refs, int out_refs_len,
+        uint8_t *out_data,  size_t out_data_max_len)
     {
         uint32_t encodedWidth, encodedHeight, bitsOffset, refsOffset;
         ReadMetadataHeader(input, encodedWidth, encodedHeight, bitsOffset, refsOffset);
         
         if(bitsOffset > len || refsOffset > len) return 0;
-        if(encodedWidth % ENCODING_BLOCK > 0) return 0;
+        if(encodedWidth % ENCODING_BLOCK > 0)    return 0;
 
         if(out_bits) DecodeMetadata16(input, bitsOffset, len, out_bits, out_bits_len);
         if(out_refs) DecodeMetadata16(input, refsOffset, len, out_refs, out_refs_len);
 
         size_t offset = METADATA_OFFSET;
         size_t out_data_len = std::min(bitsOffset, refsOffset) - offset;
-        if(out_data) *out_data = input + offset;
+        if(out_data) memcpy(out_data, input + offset, std::min(out_data_max_len, out_data_len));
         return out_data_len;
     }
 

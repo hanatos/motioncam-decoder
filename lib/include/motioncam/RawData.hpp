@@ -29,12 +29,10 @@ namespace motioncam {
             const uint8_t* input,
             const size_t len);
         size_t getEncoded(
-            uint8_t *input, size_t len,
-            uint16_t *out_bits,
-            int out_bits_len,
-            uint16_t *out_refs,
-            int out_refs_len,
-            uint8_t **out_data);
+            uint8_t *input,     size_t len,
+            uint16_t *out_bits, int out_bits_len,
+            uint16_t *out_refs, int out_refs_len,
+            uint8_t *out_data,  size_t out_data_max_len);
     }
 }
 
