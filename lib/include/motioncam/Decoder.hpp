@@ -50,6 +50,14 @@ namespace motioncam {
         
         // Get all frame timestamps in container
         const std::vector<Timestamp>& getFrames() const;
+
+        // get encoded pointers to data for external decoding
+        int getEncoded(
+            const Timestamp timestamp,
+            uint8_t  *input,    size_t len,
+            uint16_t *out_bits, int out_bits_len,
+            uint16_t *out_refs, int out_refs_len,
+            uint8_t **out_data, size_t *out_data_len);
         
         // Load a single frame and its metadata.
         void loadFrame(const Timestamp timestamp, std::vector<uint16_t>& outData, nlohmann::json& outMetadata);
@@ -79,6 +87,7 @@ namespace motioncam {
         std::vector<Timestamp> mFrameList;
         nlohmann::json mMetadata;
         std::vector<uint8_t> mTmpBuffer;
+        Timestamp cache_timestamp;
     };
 } // namespace motioncam
 

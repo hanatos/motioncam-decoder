@@ -123,6 +123,50 @@ namespace motioncam {
             outAudioChunks.push_back(std::make_pair(audioTimestamp, std::move(tmp)));
         }
     }
+
+    // TODO: read only some data: bit counts, ref values + block data without decoding
+    // TODO: this needs to return the pointer to the encoded data + size
+    int Decoder::getEncoded(
+        const Timestamp timestamp,
+        uint8_t  *input,    size_t len,
+        uint16_t *out_bits, int out_bits_len,
+        uint16_t *out_refs, int out_refs_len,
+        uint8_t **out_data, size_t *out_data_len)
+    {
+      // ReadMetadataHeader to get to width, height, bits offset and refs offset
+      // data offset = METADATA_OFFSET = 16, i.e. directly after the header
+      // bits and refs are encoded using the same blocks
+        // XXX TODO: the whole reading process can be skipped if we already loaded the correct timestamp!
+        // XXX TODO: keep timestamp as cache id and then just call raw::getEncoded on the internal cache!
+      if(cache_timestamp != timestamp)
+      {
+        if(mFrameOffsetMap.find(timestamp) == mFrameOffsetMap.end())
+          return -1;
+        
+        int64_t offset = mFrameOffsetMap.at(timestamp).offset;
+        
+        if(FSEEK(mFile, offset, SEEK_SET) != 0)
+          return -2;
+        
+        Item bufferItem{};
+        read(&bufferItem, sizeof(Item));
+
+        if(bufferItem.type != Type::BUFFER)
+          return -3;
+
+        mTmpBuffer.resize(bufferItem.size);
+        read(mTmpBuffer.data(), bufferItem.size);
+        cache_timestamp = timestamp;
+      }
+        
+      *out_data_len = raw::getEncoded(
+          mTmpBuffer.data(), mTmpBuffer.size(),
+          out_bits, out_bits_len,
+          out_refs, out_refs_len,
+          out_data);
+      if(*out_data_len == 0) return -4;
+      return 0;
+    }
     
     void Decoder::loadFrame(const Timestamp timestamp, std::vector<uint16_t>& outData, nlohmann::json& outMetadata) {
         if(mFrameOffsetMap.find(timestamp) == mFrameOffsetMap.end())

@@ -380,6 +380,7 @@ namespace motioncam {
         const UInt16x8 r6 =
                ((p0 >> 6) & L)
             | (((p1 >> 6) & L) << 2)
+            // haha i found a copy paste typo:
             | (((p1 >> 6) & L) << 2)
             | (((p2 >> 6) & L) << 4);
             
@@ -558,6 +559,41 @@ namespace motioncam {
     }
     
     inline
+    size_t DecodeMetadata16(
+        const uint8_t *input,
+        size_t         offset,
+        const size_t   len,
+        uint16_t      *out,
+        const int      out_len)
+    {
+        uint32_t numBlocks =
+                 static_cast<uint32_t>(input[offset])
+            |   (static_cast<uint32_t>(input[offset+1]) << 8)
+            |   (static_cast<uint32_t>(input[offset+2]) << 16)
+            |   (static_cast<uint32_t>(input[offset+3]) << 24);
+    
+        if(out_len < numBlocks) return 0;
+        offset += 4;
+        
+        uint8_t bits;
+        uint16_t reference;
+
+        // Decode bits
+        for(int i = 0; i < numBlocks; i+=ENCODING_BLOCK) {
+            DecodeHeader(bits, reference, input+offset);
+            
+            offset += HEADER_LENGTH;
+            offset += DecodeBlock(out, bits, input, offset, len);
+            
+            for(int x = 0; x < ENCODING_BLOCK; x++)
+                out[x] += reference;
+            
+            out += ENCODING_BLOCK;
+        }
+        return offset;
+    }
+
+    inline
     size_t DecodeMetadata(
         const uint8_t* input,
         size_t offset,
@@ -621,6 +657,29 @@ namespace motioncam {
     }
     
     } // unnamed namespace
+    
+    size_t getEncoded(
+        uint8_t *input, size_t len,
+        uint16_t *out_bits,
+        int out_bits_len,
+        uint16_t *out_refs,
+        int out_refs_len,
+        uint8_t **out_data)
+    {
+        uint32_t encodedWidth, encodedHeight, bitsOffset, refsOffset;
+        ReadMetadataHeader(input, encodedWidth, encodedHeight, bitsOffset, refsOffset);
+        
+        if(bitsOffset > len || refsOffset > len) return 0;
+        if(encodedWidth % ENCODING_BLOCK > 0) return 0;
+
+        if(out_bits) DecodeMetadata16(input, bitsOffset, len, out_bits, out_bits_len);
+        if(out_refs) DecodeMetadata16(input, refsOffset, len, out_refs, out_refs_len);
+
+        size_t offset = METADATA_OFFSET;
+        size_t out_data_len = std::min(bitsOffset, refsOffset) - offset;
+        if(out_data) *out_data = input + offset;
+        return out_data_len;
+    }
 
     size_t Decode(
         uint16_t* output,
