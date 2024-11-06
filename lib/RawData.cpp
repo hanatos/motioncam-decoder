@@ -1,7 +1,9 @@
 #include <motioncam/RawData.hpp>
 #include <vector>
 #include <cstring>
-#include <immintrin.h>
+// most decoding is done GPU side, so SSE doesn't change much.
+// if you want to use it, include here and #if 1 the SSE code path below.
+// #include <immintrin.h>
 
 namespace motioncam {
     namespace raw {
@@ -31,7 +33,7 @@ namespace motioncam {
         128
     };
 
-#if 1
+#if 0
     struct UInt16x8 
     {
         __m128i d;
